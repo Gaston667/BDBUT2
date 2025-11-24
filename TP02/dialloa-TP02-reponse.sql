@@ -67,37 +67,81 @@
 
 
 -- Question 3 :  
-
-    /*3- On souhaite calculer les frais de livraisons des commandes. Implémenter une procédure
-        sp_frais_livraison (p_commande_id INT, p_frais_livraison OUT NUMBER) qui calcule
-        les frais de livraison d’une commande.
-        p_frais_livraison est un paramètre de sortie.
-        Les frais de livraisons valent :
-        ➢ 0 si commande>= 100 euros
-        ➢ 4 si commande>= 50 euros et < 100euros
-        ➢ 10 si commande < 50 euros.
-    */
-
-    CREATE OR REPLACE PROCEDURE sp_frais_livraison (
-        p_commande_id INT, 
-        p_frais_livraison OUT NUMBER
-    ) IS 
-        v_total_commande NUMBER := 0;
-    BEGIN
-        -- Calcul du total de la commande
-        SELECT SUM(lc.prix_total)
-        INTO v_total_commande 
-        FROM ligne_commande lc 
-        WHERE lc.commande_id = p_commande_id; 
+   /*-----------------------------------------------------------
+    Procédure : sp_frais_livraison
+    Objectif  : Calculer les frais de livraison d'une commande
+                en fonction du total de cette commande.
                 
-        -- Calcul des frais en fonction du total
+    Règles de calcul :
+        - Total >= 100  → frais = 0 €
+        - Total >= 50   → frais = 4 €
+        - Total < 50    → frais = 10 €
+    ------------------------------------------------------------*/
+    CREATE OR REPLACE PROCEDURE sp_frais_livraison (
+        p_commande_id      INT,        -- Identifiant de la commande
+        p_frais_livraison  OUT NUMBER  -- Frais de livraison retournés
+    ) IS
+        v_total_commande NUMBER := 0;  -- Variable interne pour stocker le total
+    BEGIN
+        ------------------------------------------------------------
+        -- 1) Calcul du total de la commande
+        -- On additionne tous les prix_total des lignes associées
+        -- à la commande passée en paramètre.
+        ------------------------------------------------------------
+        SELECT SUM(lc.prix_total)
+        INTO v_total_commande
+        FROM ligne_commande lc
+        WHERE lc.commande_id = p_commande_id;
+
+        ------------------------------------------------------------
+        -- 2) Détermination des frais de livraison selon le total
+        ------------------------------------------------------------
         IF v_total_commande >= 100 THEN
+            -- Livraison gratuite
             p_frais_livraison := 0;
 
-        ELSIF v_total_commande >= 50 THEN 
+        ELSIF v_total_commande >= 50 THEN
+            -- Tarif intermédiaire
             p_frais_livraison := 4;
 
         ELSE
+            -- Petites commandes
+            p_frais_livraison := 10;
+        END IF;
+    END sp_frais_livraison;
+    /
+
+-- Question 4 :  
+    CREATE OR REPLACE FUNCTION fn_frais_livraison (
+        p_commande_id      INT,        -- Identifiant de la commande
+      
+    ) IS
+        p_frais_livraison  OUT NUMBER  -- Frais de livraison retournés
+        v_total_commande NUMBER := 0;  -- Variable interne pour stocker le total
+    BEGIN
+        ------------------------------------------------------------
+        -- 1) Calcul du total de la commande
+        -- On additionne tous les prix_total des lignes associées
+        -- à la commande passée en paramètre.
+        ------------------------------------------------------------
+        SELECT SUM(lc.prix_total)
+        INTO v_total_commande
+        FROM ligne_commande lc
+        WHERE lc.commande_id = p_commande_id;
+
+        ------------------------------------------------------------
+        -- 2) Détermination des frais de livraison selon le total
+        ------------------------------------------------------------
+        IF v_total_commande >= 100 THEN
+            -- Livraison gratuite
+            p_frais_livraison := 0;
+
+        ELSIF v_total_commande >= 50 THEN
+            -- Tarif intermédiaire
+            p_frais_livraison := 4;
+
+        ELSE
+            -- Petites commandes
             p_frais_livraison := 10;
         END IF;
     END sp_frais_livraison;
