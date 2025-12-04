@@ -62,4 +62,21 @@
 
 
 
+-- Question 4: 
+    /*  Ecrire une requête qui retourne le montant total dépensé par chaque client de la table    client ; le résultat rangé par ordre décroissant de montant_total dépensé.
 
+    Logique:
+        - Faire une jointure entre les tables client, commande et ligne_commande pour relier les clients à leurs commandes et aux lignes de commande associées.
+        - Utiliser la fonction d'agrégation SUM pour calculer le montant total dépensé par chaque client en sommant les prix_totaux des lignes de commande.
+        - Grouper les résultats par l'identifiant du client pour obtenir un total par client.
+        - Trier les résultats par montant_total en ordre décroissant. 
+    */
+
+    -- Requête SQL:
+    SELECT c.nom, c.prenom, SUM(lc.prix_total) AS montant_total 
+    FROM client c 
+    JOIN commande co on co.client_id = c.id 
+    JOIN ligne_commande lc on lc.commande_id = co.id
+    GROUP BY c.id, c.nom, c.prenom -- toute les colonnes non agrégées présentes dans le SELECT doivent être dans le GROUP BY mais aussi
+    -- l'identifiant du client pour éviter les ambiguïtés avec les clients ayant le même nom et prénom
+    ORDER BY montant_total DESC;

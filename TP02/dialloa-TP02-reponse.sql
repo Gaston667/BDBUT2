@@ -112,11 +112,21 @@
     /
 
 -- Question 4 :  
+    /*-----------------------------------------------------------
+        Fonction : fn_frais_livraison
+        Objectif  : Calculer les frais de livraison d'une commande
+                    en fonction du total de cette commande.
+                    
+        Règles de calcul :
+            - Total >= 100  → frais = 0 €
+            - Total >= 50   → frais = 4 €
+            - Total < 50    → frais = 10 €
+        ------------------------------------------------------------*/
     CREATE OR REPLACE FUNCTION fn_frais_livraison (
-        p_commande_id      INT,        -- Identifiant de la commande
+        p_commande_id      INT        -- Identifiant de la commande
       
-    ) IS
-        p_frais_livraison  OUT NUMBER  -- Frais de livraison retournés
+    )RETURN INTEGER AS 
+        p_frais_livraison  OUT NUMBER; -- Frais de livraison retournés
         v_total_commande NUMBER := 0;  -- Variable interne pour stocker le total
     BEGIN
         ------------------------------------------------------------
@@ -146,3 +156,116 @@
         END IF;
     END sp_frais_livraison;
     /
+
+
+-- Question 5:
+    /*-----------------------------------------------------------------------
+        Fonction : fn_points_de_fidelite(id_clent)
+        Objectif  : calculer les points de fidelite en fonction du nombre dachat efectuer
+
+                    
+        Règles de calcul :
+            - Gestion des cas où le client n'existe pas
+            - Gestion des cas où le client n'a pas fais de commande
+            - Total achat = 10: +1
+    -----------------------------------------------------------------------*/
+
+    CREATE OR REPLACE FUNCTION fn_points_de_fidelite(
+        p_id_clent    INT
+    )RETURN INTEGER AS
+        v_total_achat INT,
+        v_total_point INT,
+    BEGIN
+        -- Verifions que le client existe
+        SELECT COUNT(*) INTO v_total_achat
+        FROM client c WHERE c.id = p_id_clent;
+        IF v_total_achat = 0 THEN
+            RETURN -1; -- Le client n'existe pas
+        END IF;
+
+        EXCEPTION -- Si on rancontre une exception on la gere ici
+            WHEN NO_DATA_FOUND THEN
+                RETURN -1; -- pas de data donc Le client n'existe pas
+            WHEN OTHERS THEN
+                RETURN -2; -- Une autre erreur est survenue
+        END;
+
+        -- Verifions que le client a fait des achats
+        SELECT SUM(lc.prix_total) INTO v_total_achat
+        FROM commande c JOIN ligne_commande lc ON c.id = lc.commande_id
+        WHERE c.client_id = p_id_clent;
+
+        IF v_total_achat IS NULL OR v_total_achat = 0 THEN
+            RETURN 0; -- Le client n'a pas fait d'achat
+        END IF;
+        -- Calcul des points de fidelite
+        v_total_point := FLOOR(v_total_achat / 10);
+        RETURN v_total_point;
+
+    END fn_points_de_fidelite;
+
+    -- BLOC TEST DE LA FONCTION A LA QUESTION 5
+    DECLARE
+        v_points INTEGER;
+        v_nom_client CLIENT.nom%TYPE;
+    BEGIN
+        v_points := fn_points_de_fidelite(1);
+        SELECT nom INTO v_nom_client FROM client WHERE id = 1;
+        DBMS_OUTPUT.PUT_LINE('Le client ' || v_nom_client || ' a ' || v_points || ' points de fidélité.');
+    END;
+
+
+-- Question 6:
+    /*-----------------------------------------------------------------------
+    Fonction : fn_Date_Dernier_Achat(Nom_produit)
+    Objectif  : retourner la date du dernier achat d'un produit donné sous la
+                forme d'une chaîne de caractères au format le produit X a pour dernière date d'achat yyyy/mm/dd.
+
+    Programation Defensive :
+        - Gestion des cas où le produit n'existe pas
+        - Gestion des cas où le produit n'a jamais été acheté
+
+    Logique :
+        - Vérifier si le produit existe
+        - Si le produit n'existe pas, retourner un message approprié
+        - Si le produit existe, vérifier s'il a été acheté
+        - Si le produit n'a jamais été acheté, retourner un message approprié
+        - Si le produit a été acheté, récupérer la date du dernier achat et formater la chaîne de caractères de sortie
+
+    -----------------------------------------------------------------------*/
+
+    CREATE OR RAPLCE FUNCTION fn_Date_Dernier_Achat(
+        p_Nom_produit    VARCHAR2
+    )RETURN VARCHAR2 AS
+        v_produit_exist   INTEGER := 0;
+        v_date_dernier_achat DATE;
+        v_out_resultat VARCHAR2(100);
+    BEGIN
+        -- Vérification si le produit existe
+        SELECT CONT(*) INTO v_produit_exist
+        FROM produit p WHERE p.nom = p_Nom_produit;
+        IF v_produit_exist = 0 THEN
+            RETURN 'Le produit ' || p_Nom_produit || ' n existe pas.';
+        END IF;
+
+
+        -- Vérification si le produit a été acheté
+        SELECT MAX(c.date_commande) INTO v_date_dernier_achat
+        FROM commande c 
+        JOIN ligne_commande lc ON c.id = lc.commande_id
+        JOIN produit p ON lc.produit_id = p.id
+        WHERE p.nom = p_Nom_produit;
+        IF v_date_dernier_achat IS NULL THEN
+            RETURN 'Le produit ' || p_Nom_produit || ' n a jamais été acheté.';
+        END IF;
+
+        -- Formatage du résultat
+        v_out_resultat := 'Le produit ' || p_Nom_produit || ' a pour dernière date d achat ' || TO_CHAR(v_date_dernier_achat, 'YYYY/MM/DD') || '.';
+        RETURN v_out_resultat;
+    END fn_Date_Dernier_Achat;
+
+    -- BLOC TEST DE LA FONCTION A LA QUESTION 6
+    DECLARE
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE(fn_Date_Dernier_Achat('ICI'));
+    END;
